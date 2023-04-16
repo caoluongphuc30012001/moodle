@@ -1779,6 +1779,10 @@ class quiz_attempt {
             }
         }
 
+        global $DB;
+        $question = $this->quba->get_question($slot, false);
+        $user = $DB->get_record("user",array('id'=>$question->createdby));
+        $fullname = $user->firstname." ".$user->lastname;
         if ($seq === null) {
             $output = $this->quba->render_question($slot, $displayoptions, $number);
         } else {
@@ -1788,6 +1792,8 @@ class quiz_attempt {
         if ($slot != $originalslot) {
             $this->get_question_attempt($slot)->set_max_mark($originalmaxmark);
         }
+        $createby = html_writer::div(html_writer::tag('b',"Được tạo bởi: ").html_writer::tag("a",$fullname,array('href'=>"/moodle/user/profile.php?id=".$user->id,'target'=>'_blank')));
+        $output=$createby.$output;
 
         return $output;
     }
