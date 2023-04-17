@@ -76,7 +76,19 @@
             {{> core/moremenu}}
         </div>
     {{/primarymoremenu}}
-
+    {{#isstudent}}
+        <div class="primary-navigation">
+            <nav class="moremenu navigation observed">
+                <ul id="moremenu-643d615b621af-navbar-nav" role="menubar" class="nav more-nav navbar-nav">
+                    <li data-key="home" class="nav-item" role="none" data-forceintomoremenu="false">
+                        <a role="menuitem" class="nav-link" target="_blank" href="https://docs.google.com/forms/d/e/1FAIpQLSd-l4vkWgZKundWMwAUzYSPW0xtYOY8U3oZa1m3dqP808gZGQ/viewform?usp=sf_link">
+                            Yêu cầu giảng dạy
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    {{/isstudent}}
     <ul class="navbar-nav d-none d-md-flex my-1 px-1">
         <!-- page_heading_menu -->
         {{{ output.page_heading_menu }}}

@@ -86,6 +86,11 @@ $regionmainsettingsmenu = $buildregionmainsettings ? $OUTPUT->region_main_settin
 $header = $PAGE->activityheader;
 $headercontent = $header->export_for_template($renderer);
 
+global $USER;
+global $DB;
+$roleassignments = $DB->get_record('role_assignments', ['userid' => $USER->id]);
+$rolename = $DB->get_record("role", array("id" => $roleassignments->id));
+$isstudent = $rolename == "student";
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
@@ -105,7 +110,8 @@ $templatecontext = [
     'hasregionmainsettingsmenu' => !empty($regionmainsettingsmenu),
     'overflow' => $overflow,
     'headercontent' => $headercontent,
-    'addblockbutton' => $addblockbutton
+    'addblockbutton' => $addblockbutton,
+    "isstudent" => $isstudent
 ];
 
 echo $OUTPUT->render_from_template('theme_boost/drawers', $templatecontext);
