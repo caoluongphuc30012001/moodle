@@ -85,12 +85,13 @@ $regionmainsettingsmenu = $buildregionmainsettings ? $OUTPUT->region_main_settin
 
 $header = $PAGE->activityheader;
 $headercontent = $header->export_for_template($renderer);
-
 global $USER;
 global $DB;
-$roleassignments = $DB->get_record('role_assignments', ['userid' => $USER->id]);
-$rolename = $DB->get_record("role", array("id" => $roleassignments->id));
-$isstudent = $rolename == "student";
+$roleassignments = $DB->get_records('role_assignments', ['userid' => $USER->id]);
+$roleids = array_map(function ($a) {
+    return $a['id'];
+}, $roleassignments);
+$isstudent = !(in_array(1, $roleids) or in_array(3, $roleids));
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
