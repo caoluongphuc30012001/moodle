@@ -88,10 +88,13 @@ $headercontent = $header->export_for_template($renderer);
 global $USER;
 global $DB;
 $roleassignments = $DB->get_records('role_assignments', ['userid' => $USER->id]);
+
 $roleids = array_map(function ($a) {
-    return $a['id'];
+    return $a->roleid;
 }, $roleassignments);
-$isstudent = !(in_array(1, $roleids) or in_array(3, $roleids));
+
+$isstudent = !(in_array(1, $roleids) or in_array(2, $roleids));
+
 $templatecontext = [
     'sitename' => format_string($SITE->shortname, true, ['context' => context_course::instance(SITEID), "escape" => false]),
     'output' => $OUTPUT,
