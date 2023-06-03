@@ -35,7 +35,7 @@ class block_cocoon_course_rating extends block_base {
     }
 
     public function get_content() {
-        global $CFG, $COURSE;
+        global $CFG, $COURSE,$USER;
 
         if ($this->content !== null) {
             // return $this->content;
@@ -46,6 +46,7 @@ class block_cocoon_course_rating extends block_base {
         if(!empty($this->config->title)){$this->content->title =  format_text($this->config->title, FORMAT_HTML, array('filter' => true));} else {$this->content->title = get_string('pluginname', 'block_cocoon_course_rating');}
 
         $courseid = $COURSE->id;
+        $userid = $USER->id;
         $context = get_context_instance(CONTEXT_COURSE, $courseid);
 
         $canRate = has_capability('block/cocoon_course_rating:rate', $context);
@@ -55,6 +56,9 @@ class block_cocoon_course_rating extends block_base {
           $canRateClass = 'ccn-cannot-rate';
         }
 
+        $rating = $this->get_rating($courseid,$userid);
+
+        
         $ccnSubmitRating = $this->submit_rating();
         $this->content->text = '';
 
@@ -91,6 +95,10 @@ class block_cocoon_course_rating extends block_base {
         $ccnThree = $this->get_specific_average($COURSE->id, 3);
         $ccnTwo = $this->get_specific_average($COURSE->id, 2);
         $ccnOne = $this->get_specific_average($COURSE->id, 1);
+        $content_your_rating= '';
+        if($rating->rating){
+          $content_your_rating.='<h4 data-ccn="title" class="aii_title">Bạn đã đánh giá: '.$rating->rating.' sao</h4>';
+        }
 
         $this->content->text .= '
         	<div class="cs_row_five">
@@ -117,8 +125,9 @@ class block_cocoon_course_rating extends block_base {
 									        	<li class="list-inline-item">'.get_string('stars_1', 'theme_edumy').'</li>
 									            <li class="list-inline-item progressbar5" data-width="'.$ccnOne.'" data-target="100">'.$ccnOne.'%</li>
 									        </ul>
-										</div>
-										<div class="aii_average_review text-center '.$canRateClass.'">
+										</div>'
+                    .$content_your_rating.
+										'<div class="aii_average_review text-center '.$canRateClass.'">
 											<div class="av_content">
 												<h2>'.$ccnRating.'</h2>
 												<ul class="aii_rive_list mb0">
@@ -165,6 +174,12 @@ class block_cocoon_course_rating extends block_base {
         global $CFG, $DB;
         $countRecords = $DB->count_records('theme_edumy_courserate', array('course'=>$courseID));
         return $countRecords;
+    }
+
+    public function get_rating ($courseID,$userID){
+      global $DB;
+      $sql = " SELECT rating FROM {theme_edumy_courserate} WHERE course = $courseID AND user = $userID"; 
+      return $DB->get_record_sql($sql);
     }
 
     public function get_specific_average($courseID, $rating) {
