@@ -180,7 +180,7 @@ class block_cocoon_slider_4 extends block_base {
                   $text .='</h2>';
                   $text .='<p data-ccn="slide_subtitle'.$i.'" data-ccn-c="'.$slide_color_body.'" data-ccn-cv="'.$data->$slide_color_body.'">'.format_text($data->$slide_subtitle, FORMAT_HTML, array('filter' => true)).'</p>';
                   if(!empty($data->$slide_btn_text) && !empty($data->$slide_btn_url)){
-                    $text .=' <a target="'.$slide_btn_target.'" class="btn home_btn" href="'.format_text($data->$slide_btn_url, FORMAT_HTML, array('filter' => true)).'"
+                    $text .=' <a target="'.$slide_btn_target.'" class="btn home_btn" href="#inst70"
                                 data-ccn="slide_btn_text'.$i.'"
                                 data-ccn-c="'.$slide_color_btn.'"
                                 data-ccn-cv="'.$data->$slide_color_btn.'"

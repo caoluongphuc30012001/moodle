@@ -92,7 +92,7 @@ class block_cocoon_hero_1 extends block_base
                   if($videoPopup){
                     $this->content->text .='<a data-ccn="button_text" data-fancybox class="btn home_btn ccn_video_trigger_btn_icon" href="'.$vidURL.'">'.format_text($this->content->button_text, FORMAT_HTML, array('filter' => true)).' <i class="flaticon-play-button"></i></a>';
                   } else {
-                    $this->content->text .='<a data-ccn="button_text" class="btn home_btn" href="'.format_text($this->content->button_link, FORMAT_HTML, array('filter' => true)).'">'.format_text($this->content->button_text, FORMAT_HTML, array('filter' => true)).'</a>';
+                    $this->content->text .='<a data-ccn="button_text" class="btn home_btn" href="#inst70">'.format_text($this->content->button_text, FORMAT_HTML, array('filter' => true)).'</a>';
                   }
                   $this->content->text .='
       					</div>

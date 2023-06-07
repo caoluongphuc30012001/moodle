@@ -20,7 +20,7 @@ class block_cocoon_hero_2 extends block_base
           $this->config->title = 'Find the Best Courses';
           $this->config->subtitle = 'Technology is brining a massive wave of evolution on learning things on different ways.';
           $this->config->button_text = 'Ready to Get Started?';
-          $this->config->button_link = '#';
+          $this->config->button_link = '#inst70';
         }
     }
     public function get_content(){
@@ -56,7 +56,7 @@ class block_cocoon_hero_2 extends block_base
         <div class="home-text text-center home8">
           <h2 class="fz50" data-ccn="title">'.format_text($this->content->title, FORMAT_HTML, array('filter' => true)).'</h2>
           <p data-ccn="subtitle" class="color-white">'.format_text($this->content->subtitle, FORMAT_HTML, array('filter' => true)).'</p>
-          <a data-ccn="button_text" class="btn home_btn" href="'.format_text($this->content->button_link, FORMAT_HTML, array('filter' => true)).'">'.format_text($this->content->button_text, FORMAT_HTML, array('filter' => true)).'</a>
+          <a data-ccn="button_text" class="btn home_btn" href="#inst70">'.format_text($this->content->button_text, FORMAT_HTML, array('filter' => true)).'</a>
         </div>
       </div>
     </div>

@@ -56,5 +56,20 @@
         <INDEX NAME="index" UNIQUE="true" FIELDS="course, user"/>
       </INDEXES>
     </TABLE>
+
+    <TABLE NAME="theme_edumy_coursefeedback" COMMENT="Course feedback in Theme Edumy">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The course for the feedback."/>
+        <FIELD NAME="user" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The user for the feedback."/>
+        <FIELD NAME="message" TYPE="text" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The feedback for the course."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="index" UNIQUE="true" FIELDS="course, user"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

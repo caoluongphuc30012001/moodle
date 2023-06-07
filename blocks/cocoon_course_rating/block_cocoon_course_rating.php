@@ -59,7 +59,7 @@ class block_cocoon_course_rating extends block_base {
         $rating = $this->get_rating($courseid,$userid);
 
         
-        $ccnSubmitRating = $this->submit_rating();
+        $ccnSubmitRating = $this->submit_rating($rating);
         $this->content->text = '';
 
         $ccnRating    = number_format($this->overall_rating($COURSE->id), 1);
@@ -90,11 +90,16 @@ class block_cocoon_course_rating extends block_base {
           $ccnStars = str_repeat($ccnStarVoid, 5);
         }
 
-        $ccnFive = $this->get_specific_average($COURSE->id, 5);
-        $ccnFour = $this->get_specific_average($COURSE->id, 4);
-        $ccnThree = $this->get_specific_average($COURSE->id, 3);
-        $ccnTwo = $this->get_specific_average($COURSE->id, 2);
-        $ccnOne = $this->get_specific_average($COURSE->id, 1);
+        // $ccnFive = $this->get_specific_average($COURSE->id, 5);
+        // $ccnFour = $this->get_specific_average($COURSE->id, 4);
+        // $ccnThree = $this->get_specific_average($COURSE->id, 3);
+        // $ccnTwo = $this->get_specific_average($COURSE->id, 2);
+        // $ccnOne = $this->get_specific_average($COURSE->id, 1);
+        $ccnFive = floor($this->get_specific_average($COURSE->id, 5)*100)/100;
+        $ccnFour = floor($this->get_specific_average($COURSE->id, 4)*100)/100;
+        $ccnThree = floor($this->get_specific_average($COURSE->id, 3)*100)/100;
+        $ccnTwo = floor($this->get_specific_average($COURSE->id, 2)*100)/100;
+        $ccnOne = floor($this->get_specific_average($COURSE->id, 1)*100)/100;
         $content_your_rating= '';
         if($rating->rating){
           $content_your_rating.='<h4 data-ccn="title" class="aii_title">Bạn đã đánh giá: '.$rating->rating.' sao</h4>';
@@ -203,7 +208,7 @@ class block_cocoon_course_rating extends block_base {
 
     }
 
-    public function submit_rating() {
+    public function submit_rating($rating) {
 
       global $CFG, $COURSE;
 
@@ -215,8 +220,12 @@ class block_cocoon_course_rating extends block_base {
                     <input name="id" type="hidden" value="'.$courseid.'" />
                     <div class="ccn-star-rate-inner">';
                       for ($i = 5; $i >= 1; $i--) {
-                        $printCcnStar = str_repeat($ccnStar, $i);
-                        $return .='    <input required type="radio" id="stars-'.$i.'" name="rating" value="'.$i.'" /><label for="stars-'.$i.'"></label>';
+                        if($rating->rating==$i)
+                        {
+                          $return .='    <input required checked type="radio" id="stars-'.$i.'" name="rating" value="'.$i.'" /><label for="stars-'.$i.'"></label>';
+                        } else {
+                          $return .='    <input required type="radio" id="stars-'.$i.'" name="rating" value="'.$i.'" /><label for="stars-'.$i.'"></label>';
+                        }
                       }
       $return .= '  </div>
                     <button class="btn btn-primary" type="submit">'.get_string('rate_course', 'theme_edumy').'</button>
@@ -230,7 +239,6 @@ class block_cocoon_course_rating extends block_base {
       $ccnStarHalf  = '<li class="list-inline-item"><i class="fa fa-star-half-o"></i></li>';
       $ccnStarVoid  = '<li class="list-inline-item"><i class="fa fa-star-o"></i></li>';
       $ccnRating    = $this->overall_rating($courseID);
-
       if($ccnRating == 5) {
         $ccnStars = str_repeat($ccnStar, 5);
       } elseif($ccnRating == 4.5) {
