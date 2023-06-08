@@ -1,269 +1,354 @@
 <?php
-require_once($CFG->dirroot. '/theme/edumy/ccn/block_handler/ccn_block_handler.php');
-class block_cocoon_course_rating extends block_base {
-    public function init() {
-        $this->title = get_string('pluginname', 'block_cocoon_course_rating');
-    }
+require_once($CFG->dirroot . '/theme/edumy/ccn/block_handler/ccn_block_handler.php');
+class block_cocoon_course_rating extends block_base
+{
+  public function init()
+  {
+    $this->title = get_string('pluginname', 'block_cocoon_course_rating');
+  }
 
-    public function applicable_formats() {
-      $ccnBlockHandler = new ccnBlockHandler();
-      return $ccnBlockHandler->ccnGetBlockApplicability(array('course-view'));
-    }
+  public function applicable_formats()
+  {
+    $ccnBlockHandler = new ccnBlockHandler();
+    return $ccnBlockHandler->ccnGetBlockApplicability(array('course-view'));
+  }
 
-    function specialization() {
-        global $CFG, $DB;
-        include($CFG->dirroot . '/theme/edumy/ccn/block_handler/specialization.php');
-        if (empty($this->config)) {
-          $this->config = new \stdClass();
-          $this->config->title = 'Students feedback';
+  function specialization()
+  {
+    global $CFG, $DB;
+    include($CFG->dirroot . '/theme/edumy/ccn/block_handler/specialization.php');
+    if (empty($this->config)) {
+      $this->config = new \stdClass();
+      $this->config->title = 'Students feedback';
+    }
+  }
+
+  function instance_allow_multiple()
+  {
+    return false;
+  }
+
+  public function html_attributes()
+  {
+    global $CFG;
+    $attributes = parent::html_attributes();
+    include($CFG->dirroot . '/theme/edumy/ccn/block_handler/attributes.php');
+    return $attributes;
+  }
+
+  public function has_config()
+  {
+    return true;
+  }
+
+
+  public function getListMessage($courseID)
+  {
+    global $CFG, $DB,$USER;
+    $sql = "  SELECT f.id as id, u.id as user_id,`message`, u.firstname,u.lastname,created_at from {theme_edumy_coursefeedback} f
+              LEFT JOIN {user} u ON f.user = u.id
+              WHERE f.course = $courseID
+              ORDER BY created_at DESC;
+      ";
+    $list_message_html = "<div class=\"student_feedback_container\">
+      <h4>Nhận xét khóa học</h4>
+    ";
+    $list_message = $DB->get_records_sql($sql);
+    foreach ($list_message as $key => $message) {
+      $rating = $this->get_rating($courseID, $message->user_id);
+      $rating_html = "";
+      if ($rating->rating) {
+        for ($s = 1; $s <= 5; $s++) {
+          $rating_html .= $rating->rating >= $s ? "<i style=\" margin-right: 2px;\" class=\"fa fa-star\"></i>" : "<i style=\"color: #d0d23c; margin-right: 2px;\" class=\"fa fa-star-o\"></i>";
         }
+      }
+      $bin_btn = $message->user_id==$USER->id?"
+      <form method=\"post\" action = \"{$CFG->wwwroot}/theme/edumy/ccn/form_handler/ccn_delete_feedback.php\">
+      <input name=\"course\" type=\"hidden\" value=\"$courseID\" />
+      <input name=\"userid\" type=\"hidden\" value=\"{$USER->id}\" />
+      <input name=\"id\" type=\"hidden\" value=\"{$message->id}\" />
+      <button style=\"padding:0;margin-left:20px; background:none; border:none;\"><i
+      style=\"margin:0px;\" 
+      class=\"icon fa ccn-flaticon-trash fa-fw\">
+      </i></button>
+      </form>
+      ":"";
+      $list_message_html .= "
+      <div style=\"border: 1px solid rgb(237,239,247); padding:10px 10px; padding-bottom:5px; border-radius: 5px; margin-top:10px;\">
+        <div
+          style=\"display: flex; justify-content: space-between;\"
+        >
+          <div style=\"display: flex; align-items:center;\">
+            <a style=\"color: #6f7074; height:fit-content;\" href = \"{$CFG->wwwroot}/user/profile.php?id={$message->id}\"><strong>{$message->firstname} {$message->lastname}</strong></a>
+            <p style=\"margin-left:5px; margin: 0px 5px;\">$rating_html</p>
+          </div>
+          <p style=\"margin:0px; font-size:12px; font-style:italic;\">{$message->created_at}</p>
+        </div>
+        <div
+          style=\"display:flex; justify-content: space-between;\"
+        >
+          <p style=\"word-break: break-word;\">{$message->message}</p>
+          $bin_btn
+        </div>
+      </div>";
+    };
+    $list_message_html .= $this->submit_feedback($courseID);
+    return $list_message_html .  "</div>";
+  }
+
+  public function get_content()
+  {
+    global $CFG, $COURSE, $USER;
+
+    if ($this->content !== null) {
+      // return $this->content;
     }
 
-    function instance_allow_multiple() {
-        return false;
+    $this->content = new stdClass;
+
+    if (!empty($this->config->title)) {
+      $this->content->title =  format_text($this->config->title, FORMAT_HTML, array('filter' => true));
+    } else {
+      $this->content->title = get_string('pluginname', 'block_cocoon_course_rating');
     }
 
-    public function html_attributes() {
-      global $CFG;
-      $attributes = parent::html_attributes();
-      include($CFG->dirroot . '/theme/edumy/ccn/block_handler/attributes.php');
-      return $attributes;
+    $courseid = $COURSE->id;
+    $userid = $USER->id;
+    $context = get_context_instance(CONTEXT_COURSE, $courseid);
+
+    $canRate = has_capability('block/cocoon_course_rating:rate', $context);
+    if ($canRate == 1) {
+      $canRateClass = 'ccn-can-rate';
+    } else {
+      $canRateClass = 'ccn-cannot-rate';
     }
 
-    public function has_config() {
-        return true;
+    $rating = $this->get_rating($courseid, $userid);
+
+
+    $ccnSubmitRating = $this->submit_rating($rating);
+    $this->content->text = '';
+
+    $ccnRating    = number_format($this->overall_rating($COURSE->id), 1);
+
+    $ccnStar      = '<li class="list-inline-item"><i class="fa fa-star"></i></li>';
+    $ccnStarHalf  = '<li class="list-inline-item"><i class="fa fa-star-half-o"></i></li>';
+    $ccnStarVoid  = '<li class="list-inline-item"><i class="fa fa-star-o"></i></li>';
+
+    if ($ccnRating == 5) {
+      $ccnStars = str_repeat($ccnStar, 5);
+    } elseif ($ccnRating == 4.5) {
+      $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarHalf, 1);
+    } elseif ($ccnRating == 4) {
+      $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarVoid, 1);
+    } elseif ($ccnRating == 3.5) {
+      $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 1);
+    } elseif ($ccnRating == 3) {
+      $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarVoid, 2);
+    } elseif ($ccnRating == 2.5) {
+      $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 2);
+    } elseif ($ccnRating == 2) {
+      $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarVoid, 3);
+    } elseif ($ccnRating == 1.5) {
+      $ccnStars = str_repeat($ccnStar, 1) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 3);
+    } elseif ($ccnRating == 0.5) {
+      $ccnStars = str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 4);
+    } else {
+      $ccnStars = str_repeat($ccnStarVoid, 5);
     }
 
-    public function get_content() {
-        global $CFG, $COURSE,$USER;
+    // $ccnFive = $this->get_specific_average($COURSE->id, 5);
+    // $ccnFour = $this->get_specific_average($COURSE->id, 4);
+    // $ccnThree = $this->get_specific_average($COURSE->id, 3);
+    // $ccnTwo = $this->get_specific_average($COURSE->id, 2);
+    // $ccnOne = $this->get_specific_average($COURSE->id, 1);
+    $ccnFive = floor($this->get_specific_average($COURSE->id, 5) * 100) / 100;
+    $ccnFour = floor($this->get_specific_average($COURSE->id, 4) * 100) / 100;
+    $ccnThree = floor($this->get_specific_average($COURSE->id, 3) * 100) / 100;
+    $ccnTwo = floor($this->get_specific_average($COURSE->id, 2) * 100) / 100;
+    $ccnOne = floor($this->get_specific_average($COURSE->id, 1) * 100) / 100;
+    $content_your_rating = '';
+    if ($rating->rating) {
+      $content_your_rating .= '<h4 data-ccn="title" class="aii_title">Bạn đã đánh giá: ' . $rating->rating . ' sao</h4>';
+    }
 
-        if ($this->content !== null) {
-            // return $this->content;
-        }
-
-        $this->content = new stdClass;
-
-        if(!empty($this->config->title)){$this->content->title =  format_text($this->config->title, FORMAT_HTML, array('filter' => true));} else {$this->content->title = get_string('pluginname', 'block_cocoon_course_rating');}
-
-        $courseid = $COURSE->id;
-        $userid = $USER->id;
-        $context = get_context_instance(CONTEXT_COURSE, $courseid);
-
-        $canRate = has_capability('block/cocoon_course_rating:rate', $context);
-        if($canRate == 1) {
-          $canRateClass = 'ccn-can-rate';
-        } else {
-          $canRateClass = 'ccn-cannot-rate';
-        }
-
-        $rating = $this->get_rating($courseid,$userid);
-
-        
-        $ccnSubmitRating = $this->submit_rating($rating);
-        $this->content->text = '';
-
-        $ccnRating    = number_format($this->overall_rating($COURSE->id), 1);
-
-        $ccnStar      = '<li class="list-inline-item"><i class="fa fa-star"></i></li>';
-        $ccnStarHalf  = '<li class="list-inline-item"><i class="fa fa-star-half-o"></i></li>';
-        $ccnStarVoid  = '<li class="list-inline-item"><i class="fa fa-star-o"></i></li>';
-
-        if($ccnRating == 5) {
-          $ccnStars = str_repeat($ccnStar, 5);
-        } elseif($ccnRating == 4.5) {
-          $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarHalf, 1);
-        } elseif($ccnRating == 4) {
-          $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarVoid, 1);
-        } elseif($ccnRating == 3.5) {
-          $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 1);
-        } elseif($ccnRating == 3) {
-          $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarVoid, 2);
-        } elseif($ccnRating == 2.5) {
-          $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 2);
-        } elseif($ccnRating == 2) {
-          $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarVoid, 3);
-        } elseif($ccnRating == 1.5) {
-          $ccnStars = str_repeat($ccnStar, 1) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 3);
-        } elseif($ccnRating == 0.5) {
-          $ccnStars = str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 4);
-        } else {
-          $ccnStars = str_repeat($ccnStarVoid, 5);
-        }
-
-        // $ccnFive = $this->get_specific_average($COURSE->id, 5);
-        // $ccnFour = $this->get_specific_average($COURSE->id, 4);
-        // $ccnThree = $this->get_specific_average($COURSE->id, 3);
-        // $ccnTwo = $this->get_specific_average($COURSE->id, 2);
-        // $ccnOne = $this->get_specific_average($COURSE->id, 1);
-        $ccnFive = floor($this->get_specific_average($COURSE->id, 5)*100)/100;
-        $ccnFour = floor($this->get_specific_average($COURSE->id, 4)*100)/100;
-        $ccnThree = floor($this->get_specific_average($COURSE->id, 3)*100)/100;
-        $ccnTwo = floor($this->get_specific_average($COURSE->id, 2)*100)/100;
-        $ccnOne = floor($this->get_specific_average($COURSE->id, 1)*100)/100;
-        $content_your_rating= '';
-        if($rating->rating){
-          $content_your_rating.='<h4 data-ccn="title" class="aii_title">Bạn đã đánh giá: '.$rating->rating.' sao</h4>';
-        }
-
-        $this->content->text .= '
+    $this->content->text .= '
         	<div class="cs_row_five">
 									<div class="student_feedback_container">
-										<h4 data-ccn="title" class="aii_title">'.$this->content->title.'</h4>
+										<h4 data-ccn="title" class="aii_title">' . $this->content->title . '</h4>
 										<div class="s_feeback_content">
 									        <ul class="skills">
-									        	<li class="list-inline-item">'.get_string('stars_5', 'theme_edumy').'</li>
-									            <li class="list-inline-item progressbar1" data-width="'.$ccnFive.'" data-target="100">'.$ccnFive.'%</li>
+									        	<li class="list-inline-item">' . get_string('stars_5', 'theme_edumy') . '</li>
+									            <li class="list-inline-item progressbar1" data-width="' . $ccnFive . '" data-target="100">' . $ccnFive . '%</li>
 									        </ul>
 									        <ul class="skills">
-									        	<li class="list-inline-item">'.get_string('stars_4', 'theme_edumy').'</li>
-									            <li class="list-inline-item progressbar2" data-width="'.$ccnFour.'" data-target="100">'.$ccnFour.'%</li>
+									        	<li class="list-inline-item">' . get_string('stars_4', 'theme_edumy') . '</li>
+									            <li class="list-inline-item progressbar2" data-width="' . $ccnFour . '" data-target="100">' . $ccnFour . '%</li>
 									        </ul>
 									        <ul class="skills">
-									        	<li class="list-inline-item">'.get_string('stars_3', 'theme_edumy').'</li>
-									            <li class="list-inline-item progressbar3" data-width="'.$ccnThree.'" data-target="100">'.$ccnThree.'%</li>
+									        	<li class="list-inline-item">' . get_string('stars_3', 'theme_edumy') . '</li>
+									            <li class="list-inline-item progressbar3" data-width="' . $ccnThree . '" data-target="100">' . $ccnThree . '%</li>
 									        </ul>
 									        <ul class="skills">
-									        	<li class="list-inline-item">'.get_string('stars_2', 'theme_edumy').'</li>
-									            <li class="list-inline-item progressbar4" data-width="'.$ccnTwo.'" data-target="100">'.$ccnTwo.'%</li>
+									        	<li class="list-inline-item">' . get_string('stars_2', 'theme_edumy') . '</li>
+									            <li class="list-inline-item progressbar4" data-width="' . $ccnTwo . '" data-target="100">' . $ccnTwo . '%</li>
 									        </ul>
 									        <ul class="skills">
-									        	<li class="list-inline-item">'.get_string('stars_1', 'theme_edumy').'</li>
-									            <li class="list-inline-item progressbar5" data-width="'.$ccnOne.'" data-target="100">'.$ccnOne.'%</li>
+									        	<li class="list-inline-item">' . get_string('stars_1', 'theme_edumy') . '</li>
+									            <li class="list-inline-item progressbar5" data-width="' . $ccnOne . '" data-target="100">' . $ccnOne . '%</li>
 									        </ul>
 										</div>'
-                    .$content_your_rating.
-										'<div class="aii_average_review text-center '.$canRateClass.'">
+      . $content_your_rating .
+      '<div class="aii_average_review text-center ' . $canRateClass . '">
 											<div class="av_content">
-												<h2>'.$ccnRating.'</h2>
+												<h2>' . $ccnRating . '</h2>
 												<ul class="aii_rive_list mb0">
-													'.$ccnStars.'
+													' . $ccnStars . '
 												</ul>
-												<p>'.$this->count_ratings($COURSE->id).'</p>';
-                        if($canRate == 1){
-                          $this->content->text .= $ccnSubmitRating;
-                        }
-                      $this->content->text .='
+												<p>' . $this->count_ratings($COURSE->id) . '</p>';
+    if ($canRate == 1) {
+      $this->content->text .= $ccnSubmitRating;
+    }
+    $this->content->text .= '
 											</div>
 										</div>
-									</div>
-								</div>';
-        return $this->content;
+									</div>';
+    $list_message_html = $this->getListMessage($courseid);
+    $this->content->text .= $list_message_html;
+    return $this->content;
+  }
 
-    }
-
-    public function overall_rating($courseID) {
-        global $CFG, $DB;
-        $sql = "  SELECT AVG(rating) AS average
+  public function overall_rating($courseID)
+  {
+    global $CFG, $DB;
+    $sql = "  SELECT AVG(rating) AS average
                   FROM {theme_edumy_courserate}
                   WHERE course = $courseID
                ";
-        $totalAverage = -1;
-        if ($getAverage = $DB->get_record_sql($sql)) {
-            $totalAverage = round($getAverage->average * 2) / 2;
-        }
-        return $totalAverage;
+    $totalAverage = -1;
+    if ($getAverage = $DB->get_record_sql($sql)) {
+      $totalAverage = round($getAverage->average * 2) / 2;
     }
+    return $totalAverage;
+  }
 
-    public function count_ratings($courseID) {
-        global $CFG, $DB;
-        $countRecords = $DB->count_records('theme_edumy_courserate', array('course'=>$courseID));
-        $countRatings = '';
-        if ($countRecords > 0) {
-            $countRatings = get_string ('rated_by', 'theme_edumy', $countRecords);
-        } else {
-            $countRatings = get_string ('rated_by_none', 'theme_edumy');
-        }
-        return $countRatings;
+  public function count_ratings($courseID)
+  {
+    global $CFG, $DB;
+    $countRecords = $DB->count_records('theme_edumy_courserate', array('course' => $courseID));
+    $countRatings = '';
+    if ($countRecords > 0) {
+      $countRatings = get_string('rated_by', 'theme_edumy', $countRecords);
+    } else {
+      $countRatings = get_string('rated_by_none', 'theme_edumy');
     }
-    public function count_ratings_external($courseID) {
-        global $CFG, $DB;
-        $countRecords = $DB->count_records('theme_edumy_courserate', array('course'=>$courseID));
-        return $countRecords;
-    }
+    return $countRatings;
+  }
+  public function count_ratings_external($courseID)
+  {
+    global $CFG, $DB;
+    $countRecords = $DB->count_records('theme_edumy_courserate', array('course' => $courseID));
+    return $countRecords;
+  }
 
-    public function get_rating ($courseID,$userID){
-      global $DB;
-      $sql = " SELECT rating FROM {theme_edumy_courserate} WHERE course = $courseID AND user = $userID"; 
-      return $DB->get_record_sql($sql);
-    }
+  public function get_rating($courseID, $userID)
+  {
+    global $DB;
+    $sql = " SELECT rating FROM {theme_edumy_courserate} WHERE course = $courseID AND user = $userID";
+    return $DB->get_record_sql($sql);
+  }
 
-    public function get_specific_average($courseID, $rating) {
-        global $CFG, $DB;
-        $countOnlyRating        = $DB->count_records('theme_edumy_courserate', array('course'=>$courseID, 'rating'=>$rating));
-        $countExcludingRating   = $DB->count_records_sql(
-        "       SELECT COUNT(*)
+  public function get_specific_average($courseID, $rating)
+  {
+    global $CFG, $DB;
+    $countOnlyRating        = $DB->count_records('theme_edumy_courserate', array('course' => $courseID, 'rating' => $rating));
+    $countExcludingRating   = $DB->count_records_sql(
+      "       SELECT COUNT(*)
                 FROM {theme_edumy_courserate}
                 WHERE course = $courseID
                 AND rating <> $rating
-        ");
+        "
+    );
 
-        $countTotal             = $DB->count_records('theme_edumy_courserate', array('course'=>$courseID));
+    $countTotal             = $DB->count_records('theme_edumy_courserate', array('course' => $courseID));
 
-        if($countTotal == 0) {
-          $result = '0';
-        } else {
-          $result = $countOnlyRating / $countTotal * 100;
-        }
-        return $result;
-
+    if ($countTotal == 0) {
+      $result = '0';
+    } else {
+      $result = $countOnlyRating / $countTotal * 100;
     }
+    return $result;
+  }
 
-    public function submit_rating($rating) {
+  public function submit_feedback($courseid)
+  {
+    global $CFG;
+    return "
+      <form method=\"post\" action = \"{$CFG->wwwroot}/theme/edumy/ccn/form_handler/ccn_feedback_course.php\">
+      <input name=\"course\" type=\"hidden\" value=\"$courseid\" />
+      <div style=\"display:flex; height:50px; margin-top:20px; justify-content:space-between\">
+        <textarea name=\"message\" data-region=\"send-message-txt\" role=\"textbox\" style=\"width:100%; margin-right:10px; resize:none; border-color:rgb(237,239,247); border-radius:5px; padding: 0 5px;\"></textarea>
+        <button class=\"btn btn-primary\" type=\"submit\">Submit</button>
+      </div>
+      </form>
+    ";
+  }
 
-      global $CFG, $COURSE;
+  public function submit_rating($rating)
+  {
 
-      $courseid = $COURSE->id;
-      $context = get_context_instance(CONTEXT_COURSE, $courseid);
+    global $CFG, $COURSE;
 
-      $ccnStar =  '<span class="fa fa-star"></span>';
-      $return =   '<form id="ccn-star-rate" method="post" action="'.$CFG->wwwroot.'/theme/edumy/ccn/form_handler/ccn_rate_course.php">
-                    <input name="id" type="hidden" value="'.$courseid.'" />
+    $courseid = $COURSE->id;
+    $context = get_context_instance(CONTEXT_COURSE, $courseid);
+
+    $ccnStar =  '<span class="fa fa-star"></span>';
+    $return =   '<form id="ccn-star-rate" method="post" action="' . $CFG->wwwroot . '/theme/edumy/ccn/form_handler/ccn_rate_course.php">
+                    <input name="id" type="hidden" value="' . $courseid . '" />
                     <div class="ccn-star-rate-inner">';
-                      for ($i = 5; $i >= 1; $i--) {
-                        if($rating->rating==$i)
-                        {
-                          $return .='    <input required checked type="radio" id="stars-'.$i.'" name="rating" value="'.$i.'" /><label for="stars-'.$i.'"></label>';
-                        } else {
-                          $return .='    <input required type="radio" id="stars-'.$i.'" name="rating" value="'.$i.'" /><label for="stars-'.$i.'"></label>';
-                        }
-                      }
-      $return .= '  </div>
-                    <button class="btn btn-primary" type="submit">'.get_string('rate_course', 'theme_edumy').'</button>
-                  </form>';
-      return $return;
-    }
-
-    public function external_star_rating($courseID) {
-
-      $ccnStar      = '<li class="list-inline-item"><i class="fa fa-star"></i></li>';
-      $ccnStarHalf  = '<li class="list-inline-item"><i class="fa fa-star-half-o"></i></li>';
-      $ccnStarVoid  = '<li class="list-inline-item"><i class="fa fa-star-o"></i></li>';
-      $ccnRating    = $this->overall_rating($courseID);
-      if($ccnRating == 5) {
-        $ccnStars = str_repeat($ccnStar, 5);
-      } elseif($ccnRating == 4.5) {
-        $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarHalf, 1);
-      } elseif($ccnRating == 4) {
-        $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarVoid, 1);
-      } elseif($ccnRating == 3.5) {
-        $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 1);
-      } elseif($ccnRating == 3) {
-        $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarVoid, 2);
-      } elseif($ccnRating == 2.5) {
-        $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 2);
-      } elseif($ccnRating == 2) {
-        $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarVoid, 3);
-      } elseif($ccnRating == 1.5) {
-        $ccnStars = str_repeat($ccnStar, 1) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 3);
-      } elseif($ccnRating == 0.5) {
-        $ccnStars = str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 4);
+    for ($i = 5; $i >= 1; $i--) {
+      if ($rating->rating == $i) {
+        $return .= '    <input required checked type="radio" id="stars-' . $i . '" name="rating" value="' . $i . '" /><label for="stars-' . $i . '"></label>';
       } else {
-        $ccnStars = str_repeat($ccnStarVoid, 5);
+        $return .= '    <input required type="radio" id="stars-' . $i . '" name="rating" value="' . $i . '" /><label for="stars-' . $i . '"></label>';
       }
+    }
+    $return .= '  </div>
+                    <button class="btn btn-primary" type="submit">' . get_string('rate_course', 'theme_edumy') . '</button>
+                  </form>';
+    return $return;
+  }
 
-      $return = '<div class="ccn-external-stars">'.$ccnStars.'<li class="list-inline-item"><span>('.$this->count_ratings_external($courseID).')</span></li></div>';
-      return $return;
+  public function external_star_rating($courseID)
+  {
 
+    $ccnStar      = '<li class="list-inline-item"><i class="fa fa-star"></i></li>';
+    $ccnStarHalf  = '<li class="list-inline-item"><i class="fa fa-star-half-o"></i></li>';
+    $ccnStarVoid  = '<li class="list-inline-item"><i class="fa fa-star-o"></i></li>';
+    $ccnRating    = $this->overall_rating($courseID);
+    if ($ccnRating == 5) {
+      $ccnStars = str_repeat($ccnStar, 5);
+    } elseif ($ccnRating == 4.5) {
+      $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarHalf, 1);
+    } elseif ($ccnRating == 4) {
+      $ccnStars = str_repeat($ccnStar, 4) . str_repeat($ccnStarVoid, 1);
+    } elseif ($ccnRating == 3.5) {
+      $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 1);
+    } elseif ($ccnRating == 3) {
+      $ccnStars = str_repeat($ccnStar, 3) . str_repeat($ccnStarVoid, 2);
+    } elseif ($ccnRating == 2.5) {
+      $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 2);
+    } elseif ($ccnRating == 2) {
+      $ccnStars = str_repeat($ccnStar, 2) . str_repeat($ccnStarVoid, 3);
+    } elseif ($ccnRating == 1.5) {
+      $ccnStars = str_repeat($ccnStar, 1) . str_repeat($ccnStarHalf, 1)  . str_repeat($ccnStarVoid, 3);
+    } elseif ($ccnRating == 0.5) {
+      $ccnStars = str_repeat($ccnStarHalf, 1) . str_repeat($ccnStarVoid, 4);
+    } else {
+      $ccnStars = str_repeat($ccnStarVoid, 5);
     }
 
+    $return = '<div class="ccn-external-stars">' . $ccnStars . '<li class="list-inline-item"><span>(' . $this->count_ratings_external($courseID) . ')</span></li></div>';
+    return $return;
+  }
 }

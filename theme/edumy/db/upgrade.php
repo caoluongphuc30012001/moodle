@@ -95,5 +95,31 @@ function xmldb_theme_edumy_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2020050618, 'theme', 'edumy');
     }
 
+    if ($oldversion < 2020050618) {
+
+        // Define table theme_edumy_coursefeedback to be created.
+        $table = new xmldb_table('theme_edumy_coursefeedback');
+
+        // Adding fields to table theme_edumy_coursefeedback.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('course', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('user', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('message', XMLDB_TYPE_TEXT, '', null, XMLDB_NOTNULL, null, '');
+
+        // Adding keys to table theme_edumy_coursefeedback.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table theme_edumy_courserate.
+        $table->add_index('index', XMLDB_INDEX_UNIQUE, ['course', 'user']);
+
+        // Conditionally launch create table for theme_edumy_coursefeedback.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Edumy savepoint reached.
+        upgrade_plugin_savepoint(true, 2020050618, 'theme', 'edumy');
+    }
+
   return $result;
 }

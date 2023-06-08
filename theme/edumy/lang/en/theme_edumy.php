@@ -164,7 +164,7 @@ $string['hidden'] ='Hidden';
 $string['back_to_course'] ='Back to Course';
 $string['back_to_site'] ='Back to Site';
 $string['course_navigation'] ='Course Navigation';
-$string['rating_success'] ='Rating complete!';
+$string['rating_success'] ='Complete!';
 // CCN Dashboard Constants
 $string['messages_desc'] = 'Communicate';
 $string['messages_title'] = 'Messages';
